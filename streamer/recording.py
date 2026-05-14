@@ -36,7 +36,7 @@ class RecordingManager:
         record_path: str = "recordings",
         fps: float = 30.0,
         segment_duration_seconds: int = 60,
-        retention_seconds: int = 7 * 24 * 60 * 60,
+        retention_seconds: int = 24 * 60 * 60,
     ):
         self.record_path = record_path
         self.fps         = fps
@@ -118,7 +118,7 @@ class RecordingManager:
         freed_bytes = 0
 
         for segment in self._finalized_segments:
-            if segment["end_ts"] >= cutoff:
+            if segment["end_ts"] > cutoff:
                 retained_segments.append(segment)
                 continue
 
@@ -342,7 +342,11 @@ class RecordingManager:
                     self._start_new_segment(captured_at, frame_size)
 
                 if self._video_writer:
-                    await asyncio.to_thread(self._video_writer.write, frame)
+                    try:
+                        await asyncio.to_thread(self._video_writer.write, frame)
+                    except Exception as exc:
+                        log.error("Failed to write recording frame: %s — stopping recorder", exc)
+                        self._is_running = False
 
             except asyncio.TimeoutError:
                 continue
