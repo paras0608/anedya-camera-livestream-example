@@ -140,8 +140,15 @@ CAPTURE_RESOLUTION_CANDIDATES = [
 ]
 
 # Motion detection runs on a downscaled frame to keep CPU usage low.
-MOTION_ANALYSIS_WIDTH  = 320
-MOTION_ANALYSIS_HEIGHT = 240
+MOTION_ANALYSIS_WIDTH  = get_int_env("MOTION_ANALYSIS_WIDTH",  320, minimum=64)
+MOTION_ANALYSIS_HEIGHT = get_int_env("MOTION_ANALYSIS_HEIGHT", 240, minimum=48)
+
+# Minimum contour area (px²) on the analysis frame to count as motion.
+# Lower = more sensitive. Measured on the downscaled analysis frame.
+MOTION_THRESHOLD_PX = get_int_env("MOTION_THRESHOLD_PX", 1200, minimum=1)
+
+# Seconds between repeated motion-detected log events / triggers.
+MOTION_COOLDOWN_SECONDS = get_int_env("MOTION_COOLDOWN_SECONDS", 5, minimum=0)
 
 
 def validate_anedya_config() -> None:

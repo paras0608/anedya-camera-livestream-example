@@ -44,6 +44,10 @@ from config import (
     HEARTBEAT_INTERVAL_SECONDS,
     RECORDING_SEGMENT_SECONDS,
     RECORDING_RETENTION_SECONDS,
+    MOTION_ANALYSIS_WIDTH,
+    MOTION_ANALYSIS_HEIGHT,
+    MOTION_THRESHOLD_PX,
+    MOTION_COOLDOWN_SECONDS,
 )
 from recording import RecordingManager
 from tracks import MicrophoneAudioTrack, MicrophoneSource, WebcamTrack
@@ -434,7 +438,11 @@ class CameraStreamer:
         source = CameraSource(
             self.camera_index,
             self.recorder,
+            analysis_width=MOTION_ANALYSIS_WIDTH,
+            analysis_height=MOTION_ANALYSIS_HEIGHT,
             enable_motion_detection=self.enable_motion_detection,
+            motion_threshold_px=MOTION_THRESHOLD_PX,
+            motion_cooldown=float(MOTION_COOLDOWN_SECONDS),
         )
         await source.start()
 

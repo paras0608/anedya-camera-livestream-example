@@ -337,6 +337,8 @@ class CameraSource:
         analysis_height: int   = MOTION_ANALYSIS_HEIGHT,
         fps:             float = 60.0,
         enable_motion_detection: bool = False,
+        motion_threshold_px: int   = 1200,
+        motion_cooldown:     float = 5.0,
     ):
         self.camera_index    = camera_index
         self.recorder        = recorder
@@ -344,6 +346,8 @@ class CameraSource:
         self.analysis_height = analysis_height
         self.fps             = fps
         self.enable_motion_detection = enable_motion_detection
+        self._motion_threshold_px    = motion_threshold_px
+        self._motion_cooldown_init   = motion_cooldown
 
         system = platform.system()
         if system == "Windows":
@@ -378,7 +382,7 @@ class CameraSource:
             if self.enable_motion_detection
             else None
         )
-        self._motion_cooldown       = 5.0
+        self._motion_cooldown       = self._motion_cooldown_init
         self._last_motion_trigger   = 0.0
 
         # asyncio.Condition lets N viewer tracks all wait for the same new frame
@@ -434,7 +438,7 @@ class CameraSource:
 
         # 1200 px² threshold on the downscaled analysis frame filters out small
         # noise blobs. Adjust this value to tune sensitivity (lower = more sensitive).
-        motion_contours = [c for c in contours if cv2.contourArea(c) > 1200]
+        motion_contours = [c for c in contours if cv2.contourArea(c) > self._motion_threshold_px]
 
         now = time.time()
 
