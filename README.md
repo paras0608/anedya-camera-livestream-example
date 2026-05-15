@@ -1,10 +1,13 @@
 [<img src="https://img.shields.io/badge/Anedya-Documentation-blue?style=for-the-badge">](https://docs.anedya.io?utm_source=github&utm_medium=link&utm_campaign=github-examples&utm_content=pi-cam)
 
-# Pi Cam - CCTV Camera with Anedya + WebRTC
 
 <p align="center">
     <img src="https://cdn.anedya.io/anedya_black_banner.png" alt="Logo">
 </p>
+
+# Pi Cam - CCTV Camera with Anedya + WebRTC
+
+![Camera View](./assets/camera_view.png)
 
 Turn a Raspberry Pi into a CCTV-style camera system using Anedya for signaling and TURN relay provisioning, and WebRTC for real-time video delivery.
 
@@ -13,6 +16,7 @@ Turn a Raspberry Pi into a CCTV-style camera system using Anedya for signaling a
 - **Live WebRTC video streaming :** low-latency peer-to-peer video using Anedya-managed STUN/TURN
 - **Local Recording :** continuous MP4 segments written to disk on the Pi
 - **Playback :** scrub through past footage from the viewer without any server-side transcoding
+- **Automatic max camera mode :** selects the highest usable camera capability for both live streaming and local recording
 - **Motion detection overlay :** bounding boxes drawn on detected motion regions in real time
 - **Microphone audio :** capture and stream Pi microphone audio alongside video
 - **Web viewer :** browser-based viewer, no install required
@@ -63,7 +67,7 @@ When a firewall blocks direct peer-to-peer traffic, Anedya's managed TURN relay 
 
 ### Recording and Playback
 
-The Pi records continuously into 5-second MP4 segments on disk. The viewer receives a timeline over the WebRTC DataChannel and can seek into any finalized segment using the same data channel; the Pi reads and streams the file directly.
+The Pi records continuously into configurable MP4 segments on disk. The default segment duration is 5 seconds and can be changed with `RECORDING_SEGMENT_SECONDS`. Finalized recordings are kept for 7 days by default; change this with `RECORDING_RETENTION_DAYS`, `RECORDING_RETENTION_HOURS`, or `RECORDING_RETENTION_SECONDS` for short test windows. The viewer receives a timeline over the WebRTC DataChannel and can seek into any finalized segment using the same data channel; the Pi reads and streams the file directly.
 
 <p align="center">
     <img src="media/playback.png" alt="TURN relay connection diagram">
@@ -157,6 +161,10 @@ ANEDYA_DEVICE_ID=your-device-uuid
 ANEDYA_NODE_ID=your-node-uuid
 ANEDYA_CONNECTION_KEY=your-connection-key
 ANEDYA_REGION=ap-in-1
+RECORDING_SEGMENT_SECONDS=5
+RECORDING_RETENTION_DAYS=7
+RECORDING_RETENTION_HOURS=0
+RECORDING_RETENTION_SECONDS=
 ```
 
 Install `uv` if not already present:
@@ -171,6 +179,16 @@ Install Python dependencies:
 cd streamer
 uv sync
 ```
+
+If you want microphone audio on Raspberry Pi OS or Debian, install the system
+PortAudio runtime before starting the streamer:
+
+```bash
+sudo apt install libportaudio2
+```
+
+This is only required for audio. Video-only mode works without PortAudio by
+running the streamer with `--no-audio`.
 
 ---
 
@@ -240,6 +258,10 @@ This project uses OpenCV `VideoCapture`.
 
 - **USB/UVC webcams** work out of the box on most Pi setups.
 - **CSI cameras** (Pi Camera Module): ensure the camera is enabled in `raspi-config` and test with `libcamera-still` before running the streamer.
+- **Linux / Raspberry Pi**: the streamer uses `linuxpy` to enumerate V4L2 camera modes, selects the highest usable resolution/FPS mode, then applies that mode to OpenCV.
+- **Windows**: the streamer uses FFmpeg DirectShow mode listing through `imageio-ffmpeg` when available, then applies the selected mode to OpenCV.
+- If capability discovery fails on either platform, the streamer falls back to OpenCV resolution probing.
+- The selected capture mode is shared by both the WebRTC live stream and the MP4 recorder.
 - If capture fails on index `0`, try `--camera 1` or check `ls /dev/video*`.
 
 ---

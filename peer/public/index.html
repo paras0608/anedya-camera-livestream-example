@@ -42,6 +42,24 @@
       color: #4ade80;
     }
 
+    #networkMode {
+      font-size: 0.8rem;
+      padding: 0.35rem 0.7rem;
+      border-radius: 999px;
+      background: #222;
+      color: #aaa;
+    }
+
+    #networkMode.turn {
+      background: #3b2f0a;
+      color: #facc15;
+    }
+
+    #networkMode.p2p {
+      background: #0f3a2e;
+      color: #34d399;
+    }
+
     #status.error {
       background: #450a0a;
       color: #f87171;
@@ -69,6 +87,7 @@
       max-width: 640px;
       display: flex;
       justify-content: flex-end;
+      gap: 0.75rem;
     }
 
     button {
@@ -102,8 +121,14 @@
     }
 
     #settingsBtn,
-    #saveSettingsBtn {
+    #saveSettingsBtn,
+    #fullscreenBtn {
       background: #374151;
+    }
+
+    #fullscreenBtn {
+      padding: 0.75rem 1rem;
+      font-size: 1.2rem;
     }
 
     .toggle-row {
@@ -111,6 +136,8 @@
       max-width: 640px;
       display: flex;
       justify-content: center;
+      gap: 1.5rem;
+      flex-wrap: wrap;
     }
 
     .toggle {
@@ -211,9 +238,11 @@
 <body>
   <h1>PI CAM</h1>
   <div id="status">Connecting...</div>
+  <div id="networkMode">Mode: --</div>
   <video id="video" autoplay playsinline></video>
 
   <div class="toolbar">
+      <button id="fullscreenBtn" type="button">⛶</button>
     <button id="settingsBtn" type="button">Settings</button>
   </div>
 
@@ -227,6 +256,10 @@
     <label class="toggle">
       <input id="relayOnlyToggle" type="checkbox" />
       <span>Force relay/TURN only</span>
+    </label>
+    <label class="toggle">
+      <input id="muteToggle" type="checkbox" />
+      <span>Mute audio</span>
     </label>
   </div>
 
@@ -269,11 +302,14 @@
 
     // UI references.
     const statusEl = document.getElementById('status');
+    const networkModeEl = document.getElementById('networkMode');
     const startBtn = document.getElementById('startBtn');
     const stopBtn = document.getElementById('stopBtn');
     const liveBtn = document.getElementById('liveBtn');
     const settingsBtn = document.getElementById('settingsBtn');
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
     const relayOnlyToggle = document.getElementById('relayOnlyToggle');
+    const muteToggle = document.getElementById('muteToggle');
     const settingsPanel = document.getElementById('settings-panel');
     const nodeIdInput = document.getElementById('nodeIdInput');
     const apiKeyInput = document.getElementById('apiKeyInput');
@@ -298,7 +334,11 @@
     let dc = null;
     let pollTimer = null;
     let timelineTimer = null;
+    let timelineRenderTimer = null;
+    let latestTimeline = null;
+    let timelineReadyLogged = false;
     let draggingSlider = false;
+    let lastSeekTime = 0;
 
     function uiLog(msg) {
       logEl.textContent += msg + '\n';
@@ -353,6 +393,10 @@
 
     function resetUI() {
       video.srcObject = null;
+      latestTimeline = null;
+      timelineReadyLogged = false;
+      networkModeEl.textContent = 'Mode: --';
+      networkModeEl.className = '';
       startBtn.disabled = false;
       stopBtn.disabled = true;
       liveBtn.style.display = 'none';
@@ -370,6 +414,7 @@
     function stopStream() {
       if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
       if (timelineTimer) { clearInterval(timelineTimer); timelineTimer = null; }
+      if (timelineRenderTimer) { clearInterval(timelineRenderTimer); timelineRenderTimer = null; }
       if (pc) { pc.close(); pc = null; }
       dc = null;
       uiLog('Stream stopped');
@@ -386,20 +431,57 @@
       }
     }
 
+    function getDisplayedTimelinePosition() {
+      if (!latestTimeline) return 0;
+      if (latestTimeline.mode === 'playback' || latestTimeline.mode === 'gap') {
+        const elapsed = (performance.now() - latestTimeline.receivedAt) / 1000;
+        return Math.min(latestTimeline.position + elapsed, latestTimeline.duration);
+      }
+      return latestTimeline.duration;
+    }
+
+    function updateTimelineDisplay() {
+      if (!latestTimeline || draggingSlider) return;
+
+      const duration = latestTimeline.duration;
+      const position = getDisplayedTimelinePosition();
+
+      dvrSlider.disabled = duration <= 0;
+      dvrSlider.max = duration;
+      dvrSlider.value = Math.min(position, duration);
+      timelineCurrent.textContent = formatTime(Number(dvrSlider.value || 0));
+      timelineEnd.textContent = duration > 0 ? formatTime(duration) : 'LIVE';
+
+      if (duration <= 0) {
+        timelineStatus.textContent = 'Recording starts immediately. Playback appears after first finalized segment.';
+      } else if (latestTimeline.mode === 'live') {
+        timelineStatus.textContent = 'Live mode';
+        if (Date.now() - lastSeekTime > 3000) {
+          liveBtn.style.display = 'none';
+        }
+      } else if (latestTimeline.mode === 'gap') {
+        timelineStatus.textContent = 'No recording available';
+        liveBtn.style.display = 'inline-block';
+      } else {
+        const behindLive = Math.max(0, duration - position);
+        timelineStatus.textContent = `Playback mode - ${formatTime(behindLive)} behind live`;
+        liveBtn.style.display = 'inline-block';
+      }
+    }
+
     function renderTimeline(msg) {
       timelinePanel.style.display = 'flex';
 
       const duration = Number(msg.duration || 0);
       const position = Number(msg.playback_offset ?? duration);
+      latestTimeline = {
+        mode: msg.mode,
+        duration,
+        position,
+        receivedAt: performance.now(),
+      };
 
-      dvrSlider.disabled = duration <= 0;
-      dvrSlider.max = duration;
-      if (!draggingSlider) {
-        dvrSlider.value = Math.min(position, duration);
-      }
-
-      timelineCurrent.textContent = formatTime(Number(dvrSlider.value || 0));
-      timelineEnd.textContent = duration > 0 ? formatTime(duration) : 'LIVE';
+      updateTimelineDisplay();
 
       if (duration <= 0) {
         timelineStatus.textContent = 'Recording starts immediately. Playback appears after first finalized segment.';
@@ -409,12 +491,22 @@
 
       if (msg.mode === 'live') {
         timelineStatus.textContent = 'Live mode';
-        liveBtn.style.display = 'none';
+        if (Date.now() - lastSeekTime > 3000) {
+          liveBtn.style.display = 'none';
+        }
+      } else if (msg.mode === 'gap') {
+        timelineStatus.textContent = 'No recording available';
+        liveBtn.style.display = 'inline-block';
       } else {
         const behindLive = Math.max(0, duration - position);
         timelineStatus.textContent = `Playback mode - ${formatTime(behindLive)} behind live`;
         liveBtn.style.display = 'inline-block';
       }
+    }
+
+    function setNetworkMode(mode) {
+      networkModeEl.textContent = `Mode: ${mode}`;
+      networkModeEl.className = mode === 'TURN' ? 'turn' : mode === 'P2P' ? 'p2p' : '';
     }
 
     // Data channel controls only the device-side playback mode.
@@ -432,7 +524,16 @@
       draggingSlider = false;
       const offset = Number(dvrSlider.value || 0);
       sendCmd({ cmd: 'seek', offset });
+      latestTimeline = {
+        mode: 'playback',
+        duration: Number(dvrSlider.max || 0),
+        position: offset,
+        receivedAt: performance.now(),
+      };
+      updateTimelineDisplay();
       uiLog(`Seeking to ${formatTime(offset)}`);
+      lastSeekTime = Date.now();
+      liveBtn.style.display = 'inline-block';
     });
 
     async function vsSet(key, value) {
@@ -498,6 +599,18 @@
 
     settingsBtn.addEventListener('click', toggleSettingsPanel);
 
+    fullscreenBtn.addEventListener('click', async () => {
+      try {
+        if (!document.fullscreenElement) {
+          await video.requestFullscreen();
+        } else {
+          await document.exitFullscreen();
+        }
+      } catch (err) {
+        uiLog('Fullscreen error: ' + err.message);
+      }
+    });
+
     saveSettingsBtn.addEventListener('click', () => {
       const nodeId = nodeIdInput.value.trim();
       const value = apiKeyInput.value.trim();
@@ -518,6 +631,10 @@
 
     relayOnlyToggle.addEventListener('change', () => {
       localStorage.setItem(STORAGE_KEYS.relayOnly, String(relayOnlyToggle.checked));
+    });
+
+    muteToggle.addEventListener('change', () => {
+      video.muted = muteToggle.checked;
     });
 
     startBtn.addEventListener('click', async () => {
@@ -566,14 +683,23 @@
 
         // Timeline is polled so browser UI updates while recording window grows.
         timelineTimer = setInterval(() => sendCmd({ cmd: 'timeline' }), 2000);
+        timelineRenderTimer = setInterval(updateTimelineDisplay, 250);
       };
 
       dc.onmessage = (e) => {
-        const msg = JSON.parse(e.data);
-        if (msg.type === 'timeline') {
-          renderTimeline(msg);
-        } else if (msg.type === 'error') {
-          uiLog('Error: ' + msg.message);
+        try {
+          const msg = JSON.parse(e.data);
+          if (msg.type === 'timeline') {
+            if (!timelineReadyLogged) {
+              uiLog('Timeline ready');
+              timelineReadyLogged = true;
+            }
+            renderTimeline(msg);
+          } else if (msg.type === 'error') {
+            uiLog('Error: ' + msg.message);
+          }
+        } catch (err) {
+          uiLog('DataChannel message error: ' + err.message);
         }
       };
 
@@ -615,8 +741,10 @@
               const remote = stats.get(report.remoteCandidateId);
               if (local?.candidateType === 'relay' || remote?.candidateType === 'relay') {
                 uiLog('Candidate type: TURN');
+                setNetworkMode('TURN');
               } else {
                 uiLog('Candidate type: P2P');
+                setNetworkMode('P2P');
               }
             }
           });
@@ -639,6 +767,13 @@
           if (pc.iceGatheringState === 'complete') resolve();
         };
       });
+
+      const hasRelayCandidates = pc.localDescription.sdp.split('\n').some(
+        l => l.trim().startsWith('a=candidate:') && l.includes('typ relay')
+      );
+      if (!hasRelayCandidates) {
+        uiLog('Warning: Failed to create relay candidate. Please check your quota limits.');
+      }
 
       // Step 4: write offer + TURN data into Anedya value store.
       const sessionId = Math.random().toString(36).slice(2, 10);

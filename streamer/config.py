@@ -62,6 +62,22 @@ ANEDYA_NODE_ID        = os.environ.get("ANEDYA_NODE_ID",        "")
 ANEDYA_CONNECTION_KEY = os.environ.get("ANEDYA_CONNECTION_KEY", "")
 ANEDYA_REGION         = os.environ.get("ANEDYA_REGION",         "ap-in-1")
 
+
+def get_int_env(name: str, default: int, minimum: int | None = None) -> int:
+    """Read an integer env var with validation and a safe fallback."""
+    raw_value = os.environ.get(name, "").strip()
+    if not raw_value:
+        return default
+    try:
+        value = int(raw_value)
+    except ValueError:
+        log.warning("Invalid %s=%r; using %d", name, raw_value, default)
+        return default
+    if minimum is not None and value < minimum:
+        log.warning("%s=%d is below minimum %d; using %d", name, value, minimum, default)
+        return default
+    return value
+
 MQTT_BROKER    = f"mqtt.{ANEDYA_REGION}.anedya.io"
 MQTT_PORT      = 8883   # TLS port
 MQTT_KEEPALIVE = 60     # seconds between keepalive pings
@@ -87,6 +103,24 @@ TOPIC_VALUESTORE_UPDATES = f"$anedya/device/{ANEDYA_DEVICE_ID}/valuestore/update
 TOPIC_VALUESTORE_SET     = f"$anedya/device/{ANEDYA_DEVICE_ID}/valuestore/setValue/json"
 TOPIC_RESPONSES          = f"$anedya/device/{ANEDYA_DEVICE_ID}/response"
 TOPIC_ERRORS             = f"$anedya/device/{ANEDYA_DEVICE_ID}/errors"
+TOPIC_HEARTBEAT          = f"$anedya/device/{ANEDYA_DEVICE_ID}/heartbeat/json"
+HEARTBEAT_INTERVAL_SECONDS = MQTT_KEEPALIVE
+
+RECORDING_SEGMENT_SECONDS = get_int_env("RECORDING_SEGMENT_SECONDS", 5, minimum=1)
+
+RECORDING_RETENTION_DAYS  = get_int_env("RECORDING_RETENTION_DAYS", 1, minimum=0)
+RECORDING_RETENTION_HOURS = get_int_env("RECORDING_RETENTION_HOURS", 0, minimum=0)
+RECORDING_RETENTION_SECONDS = get_int_env(
+    "RECORDING_RETENTION_SECONDS",
+    RECORDING_RETENTION_DAYS * 24 * 60 * 60
+    + RECORDING_RETENTION_HOURS * 60 * 60,
+    minimum=0,
+)
+if RECORDING_RETENTION_SECONDS <= 0:
+    log.warning(
+        "Recording retention must be greater than 0; using default 1 day"
+    )
+    RECORDING_RETENTION_SECONDS = 24 * 60 * 60
 
 AUDIO_SAMPLE_RATE   = 48000  # Hz — standard WebRTC audio sample rate
 AUDIO_CHANNELS      = 1      # mono
@@ -106,8 +140,15 @@ CAPTURE_RESOLUTION_CANDIDATES = [
 ]
 
 # Motion detection runs on a downscaled frame to keep CPU usage low.
-MOTION_ANALYSIS_WIDTH  = 320
-MOTION_ANALYSIS_HEIGHT = 240
+MOTION_ANALYSIS_WIDTH  = get_int_env("MOTION_ANALYSIS_WIDTH",  320, minimum=64)
+MOTION_ANALYSIS_HEIGHT = get_int_env("MOTION_ANALYSIS_HEIGHT", 240, minimum=48)
+
+# Minimum contour area (px²) on the analysis frame to count as motion.
+# Lower = more sensitive. Measured on the downscaled analysis frame.
+MOTION_THRESHOLD_PX = get_int_env("MOTION_THRESHOLD_PX", 1200, minimum=1)
+
+# Seconds between repeated motion-detected log events / triggers.
+MOTION_COOLDOWN_SECONDS = get_int_env("MOTION_COOLDOWN_SECONDS", 5, minimum=0)
 
 
 def validate_anedya_config() -> None:

@@ -40,9 +40,18 @@ from config import (
     TOPIC_RESPONSES,
     TOPIC_VALUESTORE_SET,
     TOPIC_VALUESTORE_UPDATES,
+    TOPIC_HEARTBEAT,
+    HEARTBEAT_INTERVAL_SECONDS,
+    RECORDING_SEGMENT_SECONDS,
+    RECORDING_RETENTION_SECONDS,
+    MOTION_ANALYSIS_WIDTH,
+    MOTION_ANALYSIS_HEIGHT,
+    MOTION_THRESHOLD_PX,
+    MOTION_COOLDOWN_SECONDS,
 )
 from recording import RecordingManager
-from tracks import MicrophoneAudioTrack, WebcamTrack
+from tracks import MicrophoneAudioTrack, MicrophoneSource, WebcamTrack
+from concurrent.futures import Future
 
 log = logging.getLogger("streamer")
 
@@ -97,16 +106,40 @@ class CameraStreamer:
         camera_index: int,
         enable_audio: bool = True,
         record_path:  str  = "recordings",
+        enable_motion_detection: bool = False,
     ):
         self.camera_index = camera_index
         self.enable_audio = enable_audio
+        self.enable_motion_detection = enable_motion_detection
 
         self._active_peers: dict[str, dict]              = {}
         self._event_loop:   asyncio.AbstractEventLoop | None = None
         self._mqtt_client:  mqtt_lib.Client | None       = None
 
-        self.recorder = RecordingManager(record_path=record_path)
+        self.recorder = RecordingManager(
+            record_path=record_path,
+            segment_duration_seconds=RECORDING_SEGMENT_SECONDS,
+            retention_seconds=RECORDING_RETENTION_SECONDS,
+        )
         self.source:   CameraSource | None = None
+        self.audio_source: MicrophoneSource | None = None
+
+        self._heartbeat_task: Future | None = None
+
+    async def _heartbeat_loop(self) -> None:
+        """Periodically publish device heartbeat to Anedya."""
+        while True:
+            if self._mqtt_client:
+                try:
+                    result = self._mqtt_client.publish(TOPIC_HEARTBEAT, json.dumps({}), qos=1)
+                    if result.rc != mqtt_lib.MQTT_ERR_SUCCESS:
+                        log.warning("Heartbeat publish failed rc=%s", result.rc)
+                    else:
+                        log.debug("Heartbeat published")
+                except Exception as e:
+                    log.warning("Heartbeat failed: %s", e)
+
+            await asyncio.sleep(HEARTBEAT_INTERVAL_SECONDS)
 
     def _connect_to_mqtt_broker(self) -> None:
         """Create, configure, and start the Paho MQTT client.
@@ -124,6 +157,7 @@ class CameraStreamer:
             client = mqtt_lib.Client(client_id=ANEDYA_DEVICE_ID)
 
         # Anedya uses the device ID as both username and the connection key as password.
+        log.info("MQTT client configured: username=%s", ANEDYA_DEVICE_ID)
         client.username_pw_set(ANEDYA_DEVICE_ID, ANEDYA_CONNECTION_KEY)
 
         tls_context = ssl.create_default_context()
@@ -157,6 +191,16 @@ class CameraStreamer:
             client.subscribe(TOPIC_VALUESTORE_UPDATES)
             client.subscribe(TOPIC_RESPONSES)
             client.subscribe(TOPIC_ERRORS)
+
+            # Start heartbeat once connection is live
+            if (
+                self._heartbeat_task is None
+                or self._heartbeat_task.done()
+            ) and self._event_loop:
+                self._heartbeat_task = asyncio.run_coroutine_threadsafe(
+                    self._heartbeat_loop(),
+                    self._event_loop
+                )
         else:
             reason = self._MQTT_RETURN_CODES.get(rc, f"unknown (rc={rc})")
             log.error("MQTT connection refused: %s — check credentials", reason)
@@ -266,7 +310,11 @@ class CameraStreamer:
             configuration=RTCConfiguration(iceServers=ice_servers)
         )
         video_track = WebcamTrack(self.source, self.recorder)
-        audio_track = MicrophoneAudioTrack() if self.enable_audio else None
+        audio_track = (
+            MicrophoneAudioTrack(self.audio_source)
+            if self.enable_audio and self.audio_source
+            else None
+        )
 
         self._active_peers[session_id] = {
             "pc":    peer_connection,
@@ -313,7 +361,7 @@ class CameraStreamer:
                     else:
                         channel.send(json.dumps({
                             "type":    "error",
-                            "message": "No finalized recording available yet",
+                            "message": "No recording available at selected time",
                         }))
                 elif action == "live":
                     video_track.go_live()
@@ -371,7 +419,7 @@ class CameraStreamer:
         if not peer:
             return
 
-        await peer["video"].stop()
+        peer["video"].stop()
         if peer["audio"]:
             peer["audio"].release()
         await peer["pc"].close()
@@ -387,9 +435,27 @@ class CameraStreamer:
         asyncio.create_task(self.recorder.run())
         await self.recorder.wait_until_ready()
 
-        self.source = CameraSource(self.camera_index, self.recorder)
-        await self.source.start()
+        source = CameraSource(
+            self.camera_index,
+            self.recorder,
+            analysis_width=MOTION_ANALYSIS_WIDTH,
+            analysis_height=MOTION_ANALYSIS_HEIGHT,
+            enable_motion_detection=self.enable_motion_detection,
+            motion_threshold_px=MOTION_THRESHOLD_PX,
+            motion_cooldown=float(MOTION_COOLDOWN_SECONDS),
+        )
+        await source.start()
 
+        if self.enable_audio:
+            try:
+                self.audio_source = MicrophoneSource()
+                self.audio_source.start()
+            except Exception as exc:
+                self.enable_audio = False
+                self.audio_source = None
+                log.warning("Audio disabled: %s", exc)
+
+        self.source = source
         log.info("Streamer running — recording started, waiting for peers")
         try:
             while True:
@@ -406,7 +472,16 @@ class CameraStreamer:
             await self.source.stop()
             self.source = None
 
+        if self.audio_source:
+            self.audio_source.release()
+            self.audio_source = None
+
         self.recorder.stop()
+
+        if self._heartbeat_task:
+            canceled = self._heartbeat_task.cancel()
+            log.info("Heartbeat task canceled: %s", canceled)
+            self._heartbeat_task = None
 
         if self._mqtt_client:
             self._mqtt_client.loop_stop()

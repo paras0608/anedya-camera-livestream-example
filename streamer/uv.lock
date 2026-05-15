@@ -163,6 +163,15 @@ wheels = [
 ]
 
 [[package]]
+name = "comtypes"
+version = "1.4.16"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/c6/2a/65274c13327f637ec13af8d39f2cf579d9ebe7a0e683696b5f05236d2805/comtypes-1.4.16.tar.gz", hash = "sha256:cd66d1add01265cface4df51ba1e31cd1657e04463c281c802e737e79e1ba93c", size = 260252, upload-time = "2026-03-02T23:11:42.413Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5f/7c/0eb685107290b6221c03c46d39214a4e42a124189691cb83ae3228257f46/comtypes-1.4.16-py3-none-any.whl", hash = "sha256:e18d85179ff12955524c5a8c3bc09cb3c0d890f1da4d7123d14244c7b78f84c8", size = 296230, upload-time = "2026-03-02T23:11:41.049Z" },
+]
+
+[[package]]
 name = "cryptography"
 version = "46.0.7"
 source = { registry = "https://pypi.org/simple" }
@@ -267,6 +276,28 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/e8/ac/fb4c578f4a3256561548cd825646680edcadb9440f3f68add95ade1eb791/ifaddr-0.2.0.tar.gz", hash = "sha256:cc0cbfcaabf765d44595825fb96a99bb12c79716b73b44330ea38ee2b0c4aed4", size = 10485, upload-time = "2022-06-15T21:40:27.561Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/9c/1f/19ebc343cc71a7ffa78f17018535adc5cbdd87afb31d7c34874680148b32/ifaddr-0.2.0-py3-none-any.whl", hash = "sha256:085e0305cfe6f16ab12d72e2024030f5d52674afad6911bb1eee207177b8a748", size = 12314, upload-time = "2022-06-15T21:40:25.756Z" },
+]
+
+[[package]]
+name = "imageio-ffmpeg"
+version = "0.6.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/44/bd/c3343c721f2a1b0c9fc71c1aebf1966a3b7f08c2eea8ed5437a2865611d6/imageio_ffmpeg-0.6.0.tar.gz", hash = "sha256:e2556bed8e005564a9f925bb7afa4002d82770d6b08825078b7697ab88ba1755", size = 25210, upload-time = "2025-01-16T21:34:32.747Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a0/13/59da54728351883c3c1d9fca1710ab8eee82c7beba585df8f25ca925f08f/imageio_ffmpeg-0.6.0-py3-none-win32.whl", hash = "sha256:196faa79366b4a82f95c0f4053191d2013f4714a715780f0ad2a68ff37483cc2", size = 19652251, upload-time = "2025-01-16T21:34:06.812Z" },
+    { url = "https://files.pythonhosted.org/packages/2c/c6/fa760e12a2483469e2bf5058c5faff664acf66cadb4df2ad6205b016a73d/imageio_ffmpeg-0.6.0-py3-none-win_amd64.whl", hash = "sha256:02fa47c83703c37df6bfe4896aab339013f62bf02c5ebf2dce6da56af04ffc0a", size = 31246824, upload-time = "2025-01-16T21:34:28.6Z" },
+]
+
+[[package]]
+name = "linuxpy"
+version = "0.24.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "typing-extensions", marker = "python_full_version < '3.12'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a3/f7/66d76bb3099bce8a952e6114e654d1199d7a02aec90a300294919bd17f77/linuxpy-0.24.0.tar.gz", hash = "sha256:2b44434d28d49257e859a4830267a25aa4b51b1d229f95f79d025ae7f1a5d30e", size = 451602, upload-time = "2026-02-19T14:13:50.47Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/8a/d8/6ce2855fda8123ff7d127821743de7aa1609cda025183b9c4046d5b36205/linuxpy-0.24.0-py3-none-any.whl", hash = "sha256:4e2ce8da45a7a7171bcdcf6b7ab53858d9a83108e24874bd9ddb50a73590a1c6", size = 453120, upload-time = "2026-02-19T14:13:47.686Z" },
 ]
 
 [[package]]
@@ -397,6 +428,19 @@ wheels = [
 ]
 
 [[package]]
+name = "pygrabber"
+version = "0.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "comtypes" },
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/d4/24/e7e5efa1d915853f3f34cedf751cbee9d88bee47a41122d495ee95452dad/pygrabber-0.2.tar.gz", hash = "sha256:e584b119d4c9b9a8f339eb34d1fe7fdd16214a2bf5a1876171145caebdb9e413", size = 18487, upload-time = "2023-10-20T07:17:14.97Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7a/51/0359e171686a7eeda5e975d7f9dfba6a67e04b33c7ddad1f7a343c171e55/pygrabber-0.2-py3-none-any.whl", hash = "sha256:5ac8bbe5f6a5dfb7c1c9c55d80ca9b9457743abd3ac8efa21cb9e302bdbf03ac", size = 24193, upload-time = "2023-10-20T07:17:13.1Z" },
+]
+
+[[package]]
 name = "pylibsrtp"
 version = "1.0.0"
 source = { registry = "https://pypi.org/simple" }
@@ -466,6 +510,8 @@ source = { editable = "." }
 dependencies = [
     { name = "aiortc" },
     { name = "av" },
+    { name = "imageio-ffmpeg", marker = "sys_platform == 'win32'" },
+    { name = "linuxpy", marker = "sys_platform == 'linux'" },
     { name = "numpy" },
     { name = "opencv-python" },
     { name = "paho-mqtt" },
@@ -473,16 +519,26 @@ dependencies = [
     { name = "sounddevice" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "pygrabber" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "aiortc" },
     { name = "av" },
+    { name = "imageio-ffmpeg", marker = "sys_platform == 'win32'", specifier = ">=0.6.0" },
+    { name = "linuxpy", marker = "sys_platform == 'linux'", specifier = ">=0.24.0" },
     { name = "numpy" },
     { name = "opencv-python" },
     { name = "paho-mqtt" },
     { name = "qrcode" },
     { name = "sounddevice" },
 ]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pygrabber", specifier = ">=0.2" }]
 
 [[package]]
 name = "typing-extensions"
