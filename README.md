@@ -7,7 +7,7 @@
 
 # Pi Cam - CCTV Camera with Anedya + WebRTC
 
-![Camera View](./assets/camera-view.png)
+![Camera View](./assets/camera_view.png)
 
 Turn a Raspberry Pi into a CCTV-style camera system using Anedya for signaling and TURN relay provisioning, and WebRTC for real-time video delivery.
 
