@@ -232,6 +232,210 @@
       white-space: pre-wrap;
       word-break: break-all;
     }
+
+    /* ============================================================
+       STARRED MOMENTS — new styles added by paras0608
+       No existing styles were changed above this line.
+       ============================================================ */
+
+    #star-panel {
+      width: 100%;
+      max-width: 640px;
+      background: #151515;
+      border-radius: 0.75rem;
+      padding: 0.9rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    #star-panel h2 {
+      font-size: 0.9rem;
+      opacity: 0.6;
+      letter-spacing: 0.05em;
+    }
+
+    .star-add-row {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    #starNameInput {
+      flex: 1;
+      min-width: 150px;
+      border: 1px solid #2d2d2d;
+      border-radius: 0.5rem;
+      background: #111;
+      color: #eee;
+      padding: 0.6rem 0.85rem;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    #starNameInput:focus {
+      border-color: #f59e0b;
+    }
+
+    #starNameInput::placeholder {
+      color: #555;
+    }
+
+    #starBtn {
+      background: #92400e;
+      padding: 0.6rem 1.2rem;
+      font-size: 0.9rem;
+      border-radius: 0.5rem;
+      white-space: nowrap;
+    }
+
+    #starBtn:hover {
+      background: #b45309;
+    }
+
+    /* star markers that sit on top of the slider */
+    #star-track-wrap {
+      position: relative;
+      width: 100%;
+    }
+
+    #star-track {
+      position: relative;
+      height: 20px;
+      margin-bottom: 2px;
+    }
+
+    .star-pin {
+      position: absolute;
+      top: 0;
+      transform: translateX(-50%);
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+      transition: transform 0.15s;
+      z-index: 5;
+    }
+
+    .star-pin:hover {
+      transform: translateX(-50%) scale(1.4);
+    }
+
+    .star-pin-tip {
+      position: absolute;
+      bottom: calc(100% + 4px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1c1a08;
+      border: 1px solid #f59e0b;
+      color: #fde68a;
+      font-size: 0.65rem;
+      white-space: nowrap;
+      padding: 2px 7px;
+      border-radius: 4px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+
+    .star-pin:hover .star-pin-tip {
+      opacity: 1;
+    }
+
+    /* list of starred moments */
+    #star-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .star-item {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 0.5rem;
+      padding: 0.55rem 0.75rem;
+      animation: starSlide 0.2s ease;
+    }
+
+    @keyframes starSlide {
+      from { opacity: 0; transform: translateY(-4px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .star-item-time {
+      font-size: 0.8rem;
+      color: #fbbf24;
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+
+    .star-item-name {
+      flex: 1;
+      background: transparent;
+      border: none;
+      border-bottom: 1px dashed #333;
+      color: #ccc;
+      font-size: 0.82rem;
+      padding: 1px 4px;
+      outline: none;
+      transition: border-color 0.15s;
+      min-width: 60px;
+    }
+
+    .star-item-name:focus {
+      border-bottom-color: #f59e0b;
+      color: #fde68a;
+    }
+
+    .star-del {
+      background: none;
+      border: none;
+      color: #444;
+      cursor: pointer;
+      font-size: 0.75rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: color 0.15s, background 0.15s;
+    }
+
+    .star-del:hover {
+      color: #f87171;
+      background: #1f1414;
+    }
+
+    .star-empty {
+      font-size: 0.8rem;
+      color: #333;
+    }
+
+    /* toast */
+    #star-toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(10px);
+      background: #1c1a08;
+      border: 1px solid #f59e0b;
+      color: #fde68a;
+      font-size: 0.8rem;
+      padding: 7px 16px;
+      border-radius: 8px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s, transform 0.2s;
+      z-index: 9999;
+      white-space: nowrap;
+    }
+
+    #star-toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
   </style>
 </head>
 
@@ -286,7 +490,40 @@
     <div id="timeline-status">Recording starts immediately. Playback appears after first finalized segment.</div>
   </div>
 
+  <!-- ============================================================
+       STARRED MOMENTS panel — added by paras0608
+       Sits below the existing timeline panel.
+       ============================================================ -->
+  <div id="star-panel">
+    <h2>⭐ STARRED MOMENTS</h2>
+
+    <!-- name input + button -->
+    <div class="star-add-row">
+      <input
+        id="starNameInput"
+        type="text"
+        maxlength="40"
+        placeholder="Name this moment (e.g. Car arrived, Motion at gate)…"
+      />
+      <button id="starBtn" type="button">⭐ Star</button>
+    </div>
+
+    <!-- star pins that appear above the slider -->
+    <div id="star-track-wrap">
+      <div id="star-track"></div>
+    </div>
+
+    <!-- list of saved stars -->
+    <div id="star-list">
+      <div class="star-empty" id="star-empty">No starred moments yet.</div>
+    </div>
+  </div>
+  <!-- end STARRED MOMENTS -->
+
   <pre id="log"></pre>
+
+  <!-- toast for star feedback -->
+  <div id="star-toast"></div>
 
   <script>
     /*
@@ -467,6 +704,9 @@
         timelineStatus.textContent = `Playback mode - ${formatTime(behindLive)} behind live`;
         liveBtn.style.display = 'inline-block';
       }
+
+      // keep star pins in sync as the total duration grows
+      renderStarPins();
     }
 
     function renderTimeline(msg) {
@@ -684,6 +924,10 @@
         // Timeline is polled so browser UI updates while recording window grows.
         timelineTimer = setInterval(() => sendCmd({ cmd: 'timeline' }), 2000);
         timelineRenderTimer = setInterval(updateTimelineDisplay, 250);
+
+        // Pull starred moments from Anedya ValueStore so all operators
+        // who share the same Node ID + API Key see the same stars.
+        pullStarsFromCloud();
       };
 
       dc.onmessage = (e) => {
@@ -831,6 +1075,249 @@
     statusEl.className = 'connected';
     startBtn.disabled = false;
     syncSettingsUI();
+
+    /* ============================================================
+       STARRED MOMENTS — added by paras0608
+       All original code above is untouched.
+       ============================================================ */
+
+    const STAR_STORAGE_KEY    = 'pi-cam.starredMoments';
+    const STAR_VALUESTORE_KEY = 'starred_moments';   // key used in Anedya ValueStore
+
+    // Stars are kept in localStorage (instant, offline-friendly) AND
+    // mirrored to Anedya ValueStore (cloud, shared across all operators
+    // who have the same Node ID + API Key).
+    let stars = JSON.parse(localStorage.getItem(STAR_STORAGE_KEY) || '[]');
+
+    // ── Cloud helpers ─────────────────────────────────────────────
+    // Push the current stars array to Anedya ValueStore.
+    // Called after every add / delete / rename so the cloud copy
+    // is always in sync. Silently skips if credentials are missing
+    // (e.g. user hasn't entered Node ID / API Key yet).
+    async function pushStarsToCloud() {
+      try {
+        await vsSet(STAR_VALUESTORE_KEY, JSON.stringify(stars));
+        uiLog('Stars synced to Anedya ValueStore');
+      } catch (err) {
+        // Credentials missing or network error — local copy is still safe.
+        uiLog('Stars saved locally (cloud sync skipped: ' + err.message + ')');
+      }
+    }
+
+    // Pull the stars array from Anedya ValueStore and merge with
+    // any local stars so nothing is lost.
+    async function pullStarsFromCloud() {
+      try {
+        const raw = await vsGet(STAR_VALUESTORE_KEY);
+        if (!raw) return;                          // nothing in cloud yet
+        const cloudStars = JSON.parse(raw);
+
+        // Merge: keep any local star whose id is not already in cloud.
+        const cloudIds = new Set(cloudStars.map(s => s.id));
+        const localOnly = stars.filter(s => !cloudIds.has(s.id));
+        stars = [...cloudStars, ...localOnly];
+
+        localStorage.setItem(STAR_STORAGE_KEY, JSON.stringify(stars));
+        renderStarPins();
+        renderStarList();
+        uiLog('Stars loaded from Anedya ValueStore (' + stars.length + ' total)');
+      } catch (err) {
+        uiLog('Cloud star load skipped: ' + err.message);
+      }
+    }
+
+    function saveStars() {
+      // Always save locally first (instant, works offline).
+      localStorage.setItem(STAR_STORAGE_KEY, JSON.stringify(stars));
+      // Then mirror to cloud (async — does not block the UI).
+      pushStarsToCloud();
+    }
+
+    function currentOffset() {
+      // Returns the current playback offset in seconds from the existing slider.
+      return Number(dvrSlider.value || 0);
+    }
+
+    function totalDuration() {
+      return Number(dvrSlider.max || 0);
+    }
+
+    // How many seconds we rewind when starring during live mode.
+    // Reason: the camera saves video in 5-second chunks. By the time
+    // you notice something interesting and press Star, that moment is
+    // already sitting in the previous chunk. Going back 8 seconds
+    // (just over one full chunk) guarantees the starred moment lands
+    // inside a chunk that is already fully saved on the Pi and
+    // seekable — not in a chunk that is still being written.
+    const LIVE_REWIND_SECONDS = 8;
+
+    function isLiveMode() {
+      // latestTimeline.mode is 'live' when the Pi is streaming live.
+      // If we have no timeline yet (slider max = 0) we are also in live.
+      return !latestTimeline || latestTimeline.mode === 'live';
+    }
+
+    function addStar() {
+      const input = document.getElementById('starNameInput');
+      const name = input.value.trim() || 'Starred moment';
+
+      let offset;
+      let starredDuringLive = false;
+
+      if (isLiveMode()) {
+        // LIVE MODE — rewind 8 seconds so the star lands in an
+        // already-saved chunk, not in the chunk still being written.
+        const rawOffset = currentOffset();
+        offset = Math.max(0, rawOffset - LIVE_REWIND_SECONDS);
+        starredDuringLive = true;
+      } else {
+        // PLAYBACK MODE — star exactly where the slider is.
+        offset = currentOffset();
+      }
+
+      const star = {
+        id: Date.now(),
+        offset,
+        timeLabel: formatTime(offset),
+        name,
+        savedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        starredDuringLive,
+      };
+
+      stars.push(star);
+      saveStars();
+      input.value = '';
+      renderStarPins();
+      renderStarList();
+
+      if (starredDuringLive) {
+        showStarToast('⭐ "' + star.name + '" starred — pinned 8s back at ' + star.timeLabel);
+      } else {
+        showStarToast('⭐ "' + star.name + '" starred at ' + star.timeLabel);
+      }
+    }
+
+    function deleteStar(id) {
+      stars = stars.filter(s => s.id !== id);
+      saveStars();
+      renderStarPins();
+      renderStarList();
+    }
+
+    function renameStar(id, newName) {
+      const s = stars.find(s => s.id === id);
+      if (s) {
+        s.name = newName || 'Starred moment';
+        saveStars();
+        renderStarPins(); // update tooltips
+      }
+    }
+
+    function seekToStar(offset) {
+      // Reuse the existing seek logic — send cmd to Pi and update UI.
+      dvrSlider.value = offset;
+      sendCmd({ cmd: 'seek', offset });
+      latestTimeline = {
+        mode: 'playback',
+        duration: totalDuration(),
+        position: offset,
+        receivedAt: performance.now(),
+      };
+      updateTimelineDisplay();
+      lastSeekTime = Date.now();
+      liveBtn.style.display = 'inline-block';
+    }
+
+    /* Star pins sit above the DVR slider and are positioned by percentage. */
+    function renderStarPins() {
+      const track = document.getElementById('star-track');
+      track.innerHTML = '';
+      const dur = totalDuration();
+      if (dur <= 0) return;
+
+      stars.forEach(s => {
+        const pct = Math.min(100, Math.max(0, (s.offset / dur) * 100));
+        const pin = document.createElement('div');
+        pin.className = 'star-pin';
+        pin.style.left = pct + '%';
+        pin.innerHTML = `<span class="star-pin-tip">${s.name} · ${s.timeLabel}</span>⭐`;
+        pin.addEventListener('click', () => {
+          seekToStar(s.offset);
+          showStarToast('⏩ Jumped to "' + s.name + '"');
+        });
+        track.appendChild(pin);
+      });
+    }
+
+    /* The list below the panel showing all stars, newest first. */
+    function renderStarList() {
+      const list  = document.getElementById('star-list');
+      const empty = document.getElementById('star-empty');
+      list.querySelectorAll('.star-item').forEach(el => el.remove());
+
+      if (stars.length === 0) {
+        empty.style.display = 'block';
+        return;
+      }
+      empty.style.display = 'none';
+
+      [...stars].reverse().forEach(s => {
+        const item = document.createElement('div');
+        item.className = 'star-item';
+        const safeName = s.name.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+        // Show a small badge if this star was captured during live mode
+        const liveBadge = s.starredDuringLive
+          ? '<span style="font-size:0.68rem;background:#3b2f0a;color:#facc15;border-radius:4px;padding:1px 5px;white-space:nowrap;">📍 Live −8s</span>'
+          : '';
+        item.innerHTML = `
+          <span style="font-size:1rem;">⭐</span>
+          <span class="star-item-time">${s.timeLabel}</span>
+          <input class="star-item-name" value="${safeName}" placeholder="Add a name…" title="Click to rename" />
+          ${liveBadge}
+          <span style="font-size:0.72rem;color:#444;white-space:nowrap;">${s.savedAt}</span>
+          <button class="star-del">✕</button>
+        `;
+
+        // click timestamp → seek
+        item.querySelector('.star-item-time').addEventListener('click', () => {
+          seekToStar(s.offset);
+          showStarToast('⏩ Jumped to "' + s.name + '"');
+        });
+
+        // rename inline
+        const nameInput = item.querySelector('.star-item-name');
+        nameInput.addEventListener('change', () => renameStar(s.id, nameInput.value.trim()));
+        nameInput.addEventListener('blur',   () => renameStar(s.id, nameInput.value.trim()));
+
+        // delete
+        item.querySelector('.star-del').addEventListener('click', () => deleteStar(s.id));
+
+        list.appendChild(item);
+      });
+    }
+
+    /* Small toast notification */
+    let starToastTimer;
+    function showStarToast(msg) {
+      const toast = document.getElementById('star-toast');
+      toast.textContent = msg;
+      toast.classList.add('show');
+      clearTimeout(starToastTimer);
+      starToastTimer = setTimeout(() => toast.classList.remove('show'), 2600);
+    }
+
+    document.getElementById('starBtn').addEventListener('click', addStar);
+
+    // Allow pressing Enter in the name field to star immediately.
+    document.getElementById('starNameInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') addStar();
+    });
+
+    // Initial render (loads any stars saved from a previous session).
+    renderStarPins();
+    renderStarList();
+
+    /* end STARRED MOMENTS */
   </script>
 </body>
 
