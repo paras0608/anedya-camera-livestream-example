@@ -413,6 +413,21 @@
       color: #333;
     }
 
+    /* refresh button inside heading */
+    #star-panel h2 { display: flex; align-items: center; gap: 0.5rem; }
+    #starRefreshBtn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #94a3b8;
+      font-size: 0.85rem;
+      padding: 2px 8px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: 400;
+      transition: background 0.15s, color 0.15s;
+    }
+    #starRefreshBtn:hover { background: #334155; color: #e2e8f0; }
+
     /* toast */
     #star-toast {
       position: fixed;
@@ -495,7 +510,7 @@
        Sits below the existing timeline panel.
        ============================================================ -->
   <div id="star-panel">
-    <h2>⭐ STARRED MOMENTS</h2>
+    <h2>⭐ STARRED MOMENTS <button id="starRefreshBtn" type="button" title="Refresh stars from cloud">↻</button></h2>
 
     <!-- name input + button -->
     <div class="star-add-row">
@@ -1087,7 +1102,16 @@
     // Stars are kept in localStorage (instant, offline-friendly) AND
     // mirrored to Anedya ValueStore (cloud, shared across all operators
     // who have the same Node ID + API Key).
-    let stars = JSON.parse(localStorage.getItem(STAR_STORAGE_KEY) || '[]');
+    // FIX 3: Wrap in try/catch — if localStorage data is corrupted,
+    // JSON.parse would crash the entire page without this protection.
+    let stars = [];
+    try {
+      stars = JSON.parse(localStorage.getItem(STAR_STORAGE_KEY) || '[]');
+      if (!Array.isArray(stars)) stars = [];
+    } catch (e) {
+      uiLog('Failed to parse local stars: ' + e.message);
+      stars = [];
+    }
 
     // ── Cloud helpers ─────────────────────────────────────────────
     // Push the current stars array to Anedya ValueStore.
@@ -1180,7 +1204,9 @@
         offset,
         timeLabel: formatTime(offset),
         name,
-        savedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        // FIX 4: Store as ISO string instead of local time string so
+        // operators in different timezones all see the correct time.
+        createdAt: new Date().toISOString(),
         starredDuringLive,
       };
 
@@ -1206,8 +1232,11 @@
 
     function renameStar(id, newName) {
       const s = stars.find(s => s.id === id);
-      if (s) {
-        s.name = newName || 'Starred moment';
+      const targetName = newName || 'Starred moment';
+      // FIX 2: Only save if the name actually changed — prevents
+      // double API calls when both 'change' and 'blur' fire together.
+      if (s && s.name !== targetName) {
+        s.name = targetName;
         saveStars();
         renderStarPins(); // update tooltips
       }
@@ -1240,7 +1269,16 @@
         const pin = document.createElement('div');
         pin.className = 'star-pin';
         pin.style.left = pct + '%';
-        pin.innerHTML = `<span class="star-pin-tip">${s.name} · ${s.timeLabel}</span>⭐`;
+
+        // FIX 1: Use textContent instead of innerHTML to prevent
+        // XSS attacks — a malicious star name with script tags
+        // would otherwise execute in every operator's browser.
+        const tip = document.createElement('span');
+        tip.className = 'star-pin-tip';
+        tip.textContent = s.name + ' · ' + s.timeLabel;
+        pin.appendChild(tip);
+        pin.appendChild(document.createTextNode('⭐'));
+
         pin.addEventListener('click', () => {
           seekToStar(s.offset);
           showStarToast('⏩ Jumped to "' + s.name + '"');
@@ -1274,7 +1312,7 @@
           <span class="star-item-time">${s.timeLabel}</span>
           <input class="star-item-name" value="${safeName}" placeholder="Add a name…" title="Click to rename" />
           ${liveBadge}
-          <span style="font-size:0.72rem;color:#444;white-space:nowrap;">${s.savedAt}</span>
+          <span style="font-size:0.72rem;color:#444;white-space:nowrap;">${new Date(s.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
           <button class="star-del">✕</button>
         `;
 
@@ -1312,6 +1350,22 @@
     document.getElementById('starNameInput').addEventListener('keydown', e => {
       if (e.key === 'Enter') addStar();
     });
+
+    // FIX 5: Manual refresh button — operator can pull latest stars
+    // from cloud at any time without needing to reconnect.
+    document.getElementById('starRefreshBtn').addEventListener('click', async () => {
+      showStarToast('🔄 Refreshing stars from cloud...');
+      await pullStarsFromCloud();
+    });
+
+    // FIX 5: Periodic polling every 30 seconds so operators see
+    // each other's new stars without needing to reconnect.
+    // Only runs when stream is active (dc is open).
+    setInterval(() => {
+      if (dc && dc.readyState === 'open') {
+        pullStarsFromCloud();
+      }
+    }, 30000);
 
     // Initial render (loads any stars saved from a previous session).
     renderStarPins();
